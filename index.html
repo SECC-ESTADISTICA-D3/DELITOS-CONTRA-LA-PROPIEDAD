@@ -741,7 +741,7 @@ h1{font-size:clamp(26px,3.4vw,44px);line-height:1.08;font-weight:800;letter-spac
 .pill b{font-weight:700;color:#fff}
 
 /* Barra de selección fija */
-.selbar{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.selbar{position:-webkit-sticky;position:sticky;top:0;z-index:30;padding-top:env(safe-area-inset-top,0px);background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .selbar-in{max-width:1560px;margin:auto;padding:10px clamp(12px,3vw,40px);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .selbar .lbl{font-size:13px;font-weight:600;color:var(--ink-2);margin-right:2px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 340px;min-width:0}
@@ -1069,9 +1069,17 @@ body.map-fs-lock{overflow:hidden}
 .pres-item b{display:block;font-size:clamp(14px,2vw,16px);font-weight:700;color:#fff;overflow-wrap:anywhere}
 .pres-item span{display:block;margin-top:3px;font-size:clamp(12.5px,1.8vw,14px);color:#9fb2cc}
 
+
+/* Mini barra fija (celulares): Retroceder / Avanzar / Presentación / PDF / modo de color */
+.minibar{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;gap:6px;align-items:center;padding:max(6px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 6px max(8px,env(safe-area-inset-left));background:color-mix(in srgb,var(--surface) 94%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.minibar[hidden]{display:none}
+.minibar button{flex:1 1 0;min-width:0;min-height:40px;padding:6px 8px;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.minibar button:disabled{opacity:.4}
+.minibar .mb-th{flex:0 0 44px}
+@media(min-width:901px){.minibar{display:none!important}}
 /* Ajuste automático a celulares y PC */
-html{-webkit-text-size-adjust:100%;text-size-adjust:100%;overflow-x:hidden}
-body{overflow-x:hidden;min-width:320px;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow-x:clip;min-width:320px;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 img{max-width:100%}
 .leaflet-container svg,.leaflet-container canvas,.leaflet-container img{max-width:none!important;max-height:none!important}
 .btn,.seg button,.cchip,.mp-cause,.mp-deps button{touch-action:manipulation}
@@ -1158,6 +1166,7 @@ img{max-width:100%}
 
 <div id="groupsCharts"></div>
 
+<div class="minibar" id="miniBar" role="toolbar" aria-label="Controles rápidos" hidden><button type="button" class="btn" id="mbBack" aria-label="Retroceder">‹ Atrás</button><button type="button" class="btn" id="mbFwd" aria-label="Avanzar">Avanzar ›</button><button type="button" class="btn" id="mbPres">Presentación</button><button type="button" class="btn primary" id="mbPdf">PDF</button><button type="button" class="btn mb-th" id="mbTheme" aria-label="Cambiar modo claro u oscuro">◐</button></div>
 <div class="pres-ov" id="presModal" role="dialog" aria-modal="true" aria-labelledby="presT" hidden>
  <div class="pres-box" tabindex="-1">
   <button type="button" class="pres-x" id="presX" aria-label="Cerrar presentación">✕</button>
@@ -2915,6 +2924,16 @@ function bind(){
   $('gran').onclick=e=>{const b=e.target.closest('button');if(b){state.gran=b.dataset.g;refresh()}};
   $('ttype').onclick=e=>{const b=e.target.closest('button');if(b){state.ttype=b.dataset.t;refresh()}};
   $('pdfBtn').onclick=makePDF;
+  // Mini barra fija en celulares: aparece cuando la barra «Selección actual» sale de la pantalla
+  {const mb=$('miniBar'),sb=document.querySelector('.selbar');if(mb&&sb){
+    const pairs=[['mbBack','histBack'],['mbFwd','histFwd'],['mbPdf','pdfBtn']];
+    const sync=()=>pairs.forEach(([m,o])=>{const a=$(m),b=$(o);if(a&&b)a.disabled=b.disabled});
+    pairs.forEach(([m,o])=>{const a=$(m),b=$(o);if(a&&b){a.onclick=()=>b.click();new MutationObserver(sync).observe(b,{attributes:true,attributeFilter:['disabled']})}});
+    $('mbPres').onclick=()=>$('presBtn').click();
+    $('mbTheme').onclick=()=>{const b=document.querySelector('.themeSeg button[aria-pressed="false"]');if(b)b.click()};
+    const show=on=>{mb.hidden=!on;if(on)sync()};
+    if('IntersectionObserver' in window)new IntersectionObserver(es=>{const e=es[0];show(!e.isIntersecting&&e.boundingClientRect.top<0)}).observe(sb);
+  }}
   // Nodo PRESENTACIÓN (ventana con supervisión y ejecución del proyecto)
   {const ov=$('presModal');if(ov){
     const card=q=>'<div class="pres-item"><b>'+esc(q[0])+'</b><span>'+esc(q[1])+'</span></div>';
